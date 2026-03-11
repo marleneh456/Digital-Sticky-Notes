@@ -1,0 +1,123 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+#coverScreen {
+    position: fixed;
+    width: 100%; height: 100vh;
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('bulletin board.jpg');
+    background-size: cover;
+    display: flex; align-items: center; justify-content: center;
+    transition: 1s; z-index: 10;
+}
+
+.coverContent {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 40px; border-radius: 10px; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+#boardContainer {
+    position: absolute;
+    width: 100%; height: 100vh;
+    background: url('bulletin board.jpg');
+    background-size: cover;
+    display: none;
+    font-weight: bold;
+}
+
+#pageNumber{
+    color: white;
+    font-size: 18px;
+}
+
+#zoomLabel{
+    color: white;
+}
+.topBar {
+    position: absolute; top: 10px; width: 100%;
+    text-align: center; z-index: 5;
+}
+
+.topBar button {
+    margin: 0 5px; padding: 8px 15px;
+    background: #4b2c20;
+    border: none; cursor: pointer; border-radius: 5px;
+    color: white;
+}
+
+#boardWrapper {
+    position: absolute; width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center;
+    perspective: 2000px;
+}
+
+#page {
+    position: absolute; width: 100%; height: 100%;
+    transition: transform 0.6s ease-in-out, opacity 0.6s;
+}
+
+.flipping-next { transform-origin: left center; transform: rotateY(-180deg); opacity: 0; }
+.flipping-prev { transform-origin: right center; transform: rotateY(180deg); opacity: 0; }
+
+.nav-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    font-size: 30px; background: rgba(255,255,255,0.8);
+    border: none; padding: 15px; cursor: pointer; z-index: 100;
+    border-radius: 50%;
+}
+#leftArrow { left: 20px; }
+#rightArrow { right: 20px; }
+.disabled { opacity: 0.1; pointer-events: none; }
+
+.noteItem {
+    position: absolute; width: 150px; height: 150px;
+    padding: 15px; box-sizing: border-box;
+    box-shadow: 5px 5px 10px rgba(0,0,0,0.2);
+    cursor: grab; display: flex; align-items: center;
+    justify-content: center; text-align: center;
+    font-size: 16px; transform-origin: center;
+}
+
+.noteItem.selected { outline: 3px solid #4c5eff; }
+
+.deleteBtn {
+    position: absolute; top: 2px; right: 2px;
+    width: 22px; height: 22px; background: red;
+    color: white; border: none; border-radius: 50%;
+    cursor: pointer; display: none;
+}
+
+.resizeHandle {
+    position: absolute; right: 0; bottom: 0;
+    width: 15px; height: 15px; background: rgba(0,0,0,0.1);
+    cursor: nwse-resize; display: none;
+}
+
+.rotateHandle {
+    position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+    width: 16px; height: 16px; background: orange;
+    border-radius: 50%; cursor: grab; display: none;
+}
+
+.rotateLabel {
+    position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+    background: black; color: white; font-size: 12px;
+    padding: 2px 6px; border-radius: 4px; display: none;
+    pointer-events: none;
+}
+
+.noteItem.selected .deleteBtn, .noteItem.selected .resizeHandle, 
+.noteItem.selected .rotateHandle, .noteItem.selected .rotateLabel { display: block; }
+
+#editPanel {
+    position: absolute; right: 20px; top: 70px;
+    background: white; padding: 20px; border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    width: 200px; display: none; z-index: 10;
+}
+
+#noteEditBox { width: 100%; margin-top: 5px; resize: none; border: 1px solid #ccc; }
+#layerControls button { width: 100%; margin: 3px 0; padding: 5px; cursor: pointer; }

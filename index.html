@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sticky Note Bulletin Board</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="coverScreen">
+    <div class="coverContent">
+        <h1>My Bulletin Board</h1>
+        <button id="openBoardBtn">View Board</button>
+    </div>
+</div>
+
+<div id="boardContainer">
+    <div class="topBar">
+        <button id="backBtn">Back to Cover</button>
+        <p id="pageNumber"></p>
+        <button id="addPageBtn">Add Board</button>
+        <button id="deletePageBtn">Delete Board</button>
+        <button id="addNoteBtn">Add Sticky Note</button>
+        <button id="zoomOutBtn">-</button>
+        <span id="zoomLabel">100%</span>
+        <button id="zoomInBtn">+</button>
+    </div>
+
+    <button id="leftArrow" class="nav-arrow">⬅</button>
+    <div id="boardWrapper">
+        <div id="page"></div>
+    </div>
+    <button id="rightArrow" class="nav-arrow">➡</button>
+
+    <div id="editPanel">
+        <label>Edit Note</label><br>
+        <textarea id="noteEditBox" rows="4"></textarea>
+        <br><br>
+        <label>Note Color</label>
+        <input type="color" id="colorPicker">
+        <br><br>
+        <div id="layerControls">
+            <button id="frontBtn">Bring Front</button>
+            <button id="forwardBtn">Forward</button>
+            <button id="backwardBtn">Backward</button>
+            <button id="backBtnLayer">Send Back</button>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
