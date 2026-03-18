@@ -1,3 +1,5 @@
+// script.js
+
 let pages = JSON.parse(localStorage.getItem("stickyPages")) || [[]];
 let zoomLevel = parseFloat(localStorage.getItem("boardZoom")) || 1;
 let currentPage = 0;
@@ -10,6 +12,24 @@ const zoomLabel = document.getElementById("zoomLabel");
 const editPanel = document.getElementById("editPanel");
 const noteEditBox = document.getElementById("noteEditBox");
 const colorPicker = document.getElementById("colorPicker");
+
+// Helper function to extract coordinates for both mouse and touch events
+function getEventClient(e) {
+    if (e.type.includes('touch')) {
+        return {
+            x: e.touches[0].clientX,
+            y: e.touches[0].clientY,
+            pageX: e.touches[0].pageX,
+            pageY: e.touches[0].pageY
+        };
+    }
+    return {
+        x: e.clientX,
+        y: e.clientY,
+        pageX: e.pageX,
+        pageY: e.pageY
+    };
+}
 
 function saveData() {
     localStorage.setItem("stickyPages", JSON.stringify(pages));
@@ -47,6 +67,7 @@ function renderPage() {
             <div class="rotateLabel">${disp}°</div>
         `;
 
+        // onclick works for both mouse clicks and mobile finger taps
         div.onclick = (e) => {
             e.stopPropagation();
             selectNote(index);
@@ -140,54 +161,126 @@ document.getElementById("deletePageBtn").onclick = () => {
     }
 };
 
+// --- TOUCH AND MOUSE HANDLERS ---
+
 function enableDrag(div, index) {
     let ox, oy;
-    div.onmousedown = (e) => {
+
+    function startDrag(e) {
         if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
-        ox = e.offsetX; oy = e.offsetY;
-        document.onmousemove = (e) => {
-            let x = e.pageX - ox; let y = e.pageY - oy;
-            div.style.left = x + "px"; div.style.top = y + "px";
-            pages[currentPage][index].x = x; pages[currentPage][index].y = y;
-        };
-        document.onmouseup = () => { document.onmousemove = null; saveData(); };
-    };
+        
+        const pos = getEventClient(e);
+        // Calculate offset without relying on e.offsetX which isn't available in touch
+        ox = pos.pageX - parseFloat(div.style.left || 0);
+        oy = pos.pageY - parseFloat(div.style.top || 0);
+
+        function moveDrag(e) {
+            if (e.type.includes('touch')) e.preventDefault(); // Stop mobile screen from scrolling
+            const movePos = getEventClient(e);
+            let x = movePos.pageX - ox;
+            let y = movePos.pageY - oy;
+            
+            div.style.left = x + "px"; 
+            div.style.top = y + "px";
+            pages[currentPage][index].x = x; 
+            pages[currentPage][index].y = y;
+        }
+
+        function stopDrag() {
+            document.removeEventListener("mousemove", moveDrag);
+            document.removeEventListener("mouseup", stopDrag);
+            document.removeEventListener("touchmove", moveDrag);
+            document.removeEventListener("touchend", stopDrag);
+            saveData();
+        }
+
+        // Bind standard mouse and touch events
+        document.addEventListener("mousemove", moveDrag);
+        document.addEventListener("mouseup", stopDrag);
+        document.addEventListener("touchmove", moveDrag, { passive: false });
+        document.addEventListener("touchend", stopDrag);
+    }
+
+    div.addEventListener("mousedown", startDrag);
+    div.addEventListener("touchstart", startDrag, { passive: false });
 }
 
 function enableRotate(div, index) {
     const handle = div.querySelector(".rotateHandle");
     const label = div.querySelector(".rotateLabel");
-    handle.onmousedown = (e) => {
+    
+    function startRotate(e) {
         e.stopPropagation();
-        document.onmousemove = (e) => {
+
+        function moveRotate(e) {
+            if (e.type.includes('touch')) e.preventDefault();
+            const pos = getEventClient(e);
             const rect = div.getBoundingClientRect();
             const cx = rect.left + rect.width / 2;
             const cy = rect.top + rect.height / 2;
-            // Recalibrated: +90 aligns mouse to top-center as 0 degrees
-            const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
+            
+            const angle = Math.atan2(pos.y - cy, pos.x - cx) * 180 / Math.PI + 90;
             div.style.transform = `rotate(${angle}deg)`;
+            
             let disp = Math.round(angle % 360);
             if (disp < 0) disp += 360;
             label.innerText = disp + "°";
             pages[currentPage][index].rotation = angle;
-        };
-        document.onmouseup = () => { document.onmousemove = null; saveData(); };
-    };
+        }
+
+        function stopRotate() {
+            document.removeEventListener("mousemove", moveRotate);
+            document.removeEventListener("mouseup", stopRotate);
+            document.removeEventListener("touchmove", moveRotate);
+            document.removeEventListener("touchend", stopRotate);
+            saveData();
+        }
+
+        document.addEventListener("mousemove", moveRotate);
+        document.addEventListener("mouseup", stopRotate);
+        document.addEventListener("touchmove", moveRotate, { passive: false });
+        document.addEventListener("touchend", stopRotate);
+    }
+
+    handle.addEventListener("mousedown", startRotate);
+    handle.addEventListener("touchstart", startRotate, { passive: false });
 }
 
 function enableResize(div, index) {
     const handle = div.querySelector(".resizeHandle");
-    handle.onmousedown = (e) => {
+
+    function startResize(e) {
         e.stopPropagation();
-        document.onmousemove = (e) => {
+
+        function moveResize(e) {
+            if (e.type.includes('touch')) e.preventDefault();
+            const pos = getEventClient(e);
             const rect = div.getBoundingClientRect();
-            const newSize = Math.max(60, e.clientX - rect.left);
+            const newSize = Math.max(60, pos.x - rect.left);
+            
+            // Performance Fix: directly change styles instead of doing a full renderPage() loop mid-drag
+            div.style.width = newSize + "px";
+            div.style.height = newSize + "px";
             pages[currentPage][index].size = newSize;
-            renderPage();
-            selectNote(index);
-        };
-        document.onmouseup = () => { document.onmousemove = null; saveData(); };
-    };
+        }
+
+        function stopResize() {
+            document.removeEventListener("mousemove", moveResize);
+            document.removeEventListener("mouseup", stopResize);
+            document.removeEventListener("touchmove", moveResize);
+            document.removeEventListener("touchend", stopResize);
+            saveData();
+            selectNote(index); // Ensure editing panel updates correctly
+        }
+
+        document.addEventListener("mousemove", moveResize);
+        document.addEventListener("mouseup", stopResize);
+        document.addEventListener("touchmove", moveResize, { passive: false });
+        document.addEventListener("touchend", stopResize);
+    }
+
+    handle.addEventListener("mousedown", startResize);
+    handle.addEventListener("touchstart", startResize, { passive: false });
 }
 
 function enableDelete(div, index) {
@@ -197,6 +290,8 @@ function enableDelete(div, index) {
         renderPage();
     };
 }
+
+// --- BUTTONS ---
 
 document.getElementById("frontBtn").onclick = () => { let n = pages[currentPage].splice(selectedIndex, 1)[0]; pages[currentPage].push(n); renderPage(); };
 document.getElementById("backBtnLayer").onclick = () => { let n = pages[currentPage].splice(selectedIndex, 1)[0]; pages[currentPage].unshift(n); renderPage(); };
