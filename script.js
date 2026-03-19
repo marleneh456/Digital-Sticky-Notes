@@ -104,9 +104,16 @@ pageElem.onclick = () => {
 
 noteEditBox.oninput = () => {
     if (selectedIndex !== null) {
-        pages[currentPage][selectedIndex].text = noteEditBox.value;
-        renderPage();
-        selectNote(selectedIndex);
+        const noteData = pages[currentPage][selectedIndex];
+        noteData.text = noteEditBox.value;
+        
+        // Update ONLY the text of the selected note in the DOM
+        const noteElements = document.querySelectorAll(".noteItem");
+        if (noteElements[selectedIndex]) {
+            // Be careful with innerHTML here; maybe use a dedicated span for text
+            noteElements[selectedIndex].childNodes[0].textContent = noteEditBox.value;
+        }
+        saveData();
     }
 };
 
