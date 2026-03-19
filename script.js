@@ -211,7 +211,6 @@ function setupRotate(div, idx) {
 // 5. GLOBAL INITIALIZATION
 document.addEventListener("DOMContentLoaded", () => {
     
-    // Support for both Mobile Touch and Desktop Click
     const clickEvent = ('ontouchstart' in window) ? 'touchstart' : 'click';
 
     get("addNoteBtn").addEventListener(clickEvent, () => {
@@ -234,8 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
     get("noteEditBox").oninput = (e) => {
         if (selectedIndex !== null) {
             pages[currentPage][selectedIndex].text = e.target.value;
-            const content = document.querySelectorAll(".noteItem")[selectedIndex].querySelector(".noteContent");
-            if (content) content.innerText = e.target.value;
+            renderPage();
             saveData();
         }
     };
@@ -243,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
     get("colorPicker").oninput = (e) => {
         if (selectedIndex !== null) {
             pages[currentPage][selectedIndex].color = e.target.value;
-            document.querySelectorAll(".noteItem")[selectedIndex].style.backgroundColor = e.target.value;
+            renderPage();
             saveData();
         }
     };
@@ -262,32 +260,44 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // DOWNLOAD FUNCTIONALITY
+    // --- ENHANCED DOWNLOAD FUNCTION ---
     get("downloadBtn").onclick = async () => {
+        // 1. Check if library exists
+        if (typeof html2canvas === "undefined") {
+            alert("The download library is still loading. Please wait 2 seconds and try again.");
+            return;
+        }
+
         const page = get("page");
         const originalTransform = page.style.transform;
         
-        // Temporarily reset zoom to 1 for a high-quality capture
+        // 2. Prepare for capture
         page.style.transform = "scale(1)";
         document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
 
         try {
-            const canvas = await html2canvas(page, {
+            // 3. Capture
+            const canvas = await window.html2canvas(page, {
                 useCORS: true,
-                scale: 2, // High resolution
-                backgroundColor: null
+                scale: 2, 
+                logging: false,
+                allowTaint: true
             });
 
+            // 4. Trigger Download
             const link = document.createElement("a");
             link.download = `board-${currentPage + 1}.png`;
             link.href = canvas.toDataURL("image/png");
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
         } catch (err) {
             console.error("Download Error:", err);
-            alert("Download failed. Make sure html2canvas is loaded.");
+            alert("Could not generate image. Check your internet connection.");
+        } finally {
+            // 5. Always reset zoom
+            page.style.transform = originalTransform;
         }
-
-        page.style.transform = originalTransform;
     };
 
     renderPage();
