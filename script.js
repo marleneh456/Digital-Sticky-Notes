@@ -15,7 +15,7 @@ const colorPicker = document.getElementById("colorPicker");
 
 // Helper function to extract coordinates for both mouse and touch events
 function getEventClient(e) {
-    if (e.type.includes('touch')) {
+    if (e.touches && e.touches.length > 0) {
         return {
             x: e.touches[0].clientX,
             y: e.touches[0].clientY,
@@ -37,41 +37,51 @@ function saveData() {
 }
 
 function updateZoom() {
+    if (!pageElem) return;
     pageElem.style.transform = `scale(${zoomLevel})`;
-    zoomLabel.textContent = Math.round(zoomLevel * 100) + "%";
+    if (zoomLabel) zoomLabel.textContent = Math.round(zoomLevel * 100) + "%";
     saveData();
 }
 
 function renderPage() {
+    if (!pageElem) return;
     pageElem.innerHTML = "";
-    pageNumber.textContent = `Board ${currentPage + 1} / ${pages.length}`;
+    if (pageNumber) pageNumber.textContent = `Board ${currentPage + 1} / ${pages.length}`;
     
     pages[currentPage].forEach((note, index) => {
         const div = document.createElement("div");
         div.className = "noteItem";
+        if (selectedIndex === index) div.classList.add("selected");
+        
         div.style.left = note.x + "px";
         div.style.top = note.y + "px";
         div.style.width = note.size + "px";
         div.style.height = note.size + "px";
         div.style.backgroundColor = note.color;
         div.style.transform = `rotate(${note.rotation || 0}deg)`;
+        div.style.position = "absolute"; // Ensure positioning is explicit
         
-        let disp = Math.round(note.rotation % 360);
+        let disp = Math.round((note.rotation || 0) % 360);
         if (disp < 0) disp += 360;
 
         div.innerHTML = `
-            ${note.text}
+            <div class="noteText">${note.text}</div>
             <button class="deleteBtn">×</button>
             <div class="resizeHandle"></div>
             <div class="rotateHandle"></div>
             <div class="rotateLabel">${disp}°</div>
         `;
 
-        // onclick works for both mouse clicks and mobile finger taps
-        div.onclick = (e) => {
-            e.stopPropagation();
+        // Listeners for selection
+        div.addEventListener("mousedown", (e) => {
+            if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
             selectNote(index);
-        };
+        });
+
+        div.addEventListener("touchstart", (e) => {
+            if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
+            selectNote(index);
+        }, { passive: true });
 
         pageElem.appendChild(div);
         enableDrag(div, index);
@@ -80,39 +90,42 @@ function renderPage() {
         enableDelete(div, index);
     });
 
-    document.getElementById("leftArrow").classList.toggle("disabled", currentPage === 0);
-    document.getElementById("rightArrow").classList.toggle("disabled", currentPage === pages.length - 1);
+    const leftArrow = document.getElementById("leftArrow");
+    const rightArrow = document.getElementById("rightArrow");
+    if (leftArrow) leftArrow.classList.toggle("disabled", currentPage === 0);
+    if (rightArrow) rightArrow.classList.toggle("disabled", currentPage === pages.length - 1);
+    
     updateZoom();
 }
 
 function selectNote(index) {
-    document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
     selectedIndex = index;
-    const note = pages[currentPage][index];
-    document.querySelectorAll(".noteItem")[index].classList.add("selected");
+    const allNotes = document.querySelectorAll(".noteItem");
+    allNotes.forEach(n => n.classList.remove("selected"));
     
-    editPanel.style.display = "block";
-    noteEditBox.value = note.text;
-    colorPicker.value = note.color;
+    if (allNotes[index]) {
+        allNotes[index].classList.add("selected");
+        const note = pages[currentPage][index];
+        editPanel.style.display = "block";
+        noteEditBox.value = note.text;
+        colorPicker.value = note.color;
+    }
 }
 
-pageElem.onclick = () => {
-    selectedIndex = null;
-    editPanel.style.display = "none";
-    document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
-};
+// Global click to deselect
+document.addEventListener("mousedown", (e) => {
+    if (!e.target.closest(".noteItem") && !e.target.closest("#editPanel") && !e.target.closest(".controls")) {
+        selectedIndex = null;
+        if (editPanel) editPanel.style.display = "none";
+        document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
+    }
+});
 
 noteEditBox.oninput = () => {
     if (selectedIndex !== null) {
-        const noteData = pages[currentPage][selectedIndex];
-        noteData.text = noteEditBox.value;
-        
-        // Update ONLY the text of the selected note in the DOM
-        const noteElements = document.querySelectorAll(".noteItem");
-        if (noteElements[selectedIndex]) {
-            // Be careful with innerHTML here; maybe use a dedicated span for text
-            noteElements[selectedIndex].childNodes[0].textContent = noteEditBox.value;
-        }
+        pages[currentPage][selectedIndex].text = noteEditBox.value;
+        const noteTextElem = document.querySelectorAll(".noteItem")[selectedIndex].querySelector(".noteText");
+        if (noteTextElem) noteTextElem.textContent = noteEditBox.value;
         saveData();
     }
 };
@@ -120,16 +133,18 @@ noteEditBox.oninput = () => {
 colorPicker.oninput = () => {
     if (selectedIndex !== null) {
         pages[currentPage][selectedIndex].color = colorPicker.value;
-        renderPage();
-        selectNote(selectedIndex);
+        const noteElem = document.querySelectorAll(".noteItem")[selectedIndex];
+        if (noteElem) noteElem.style.backgroundColor = colorPicker.value;
+        saveData();
     }
 };
 
 document.getElementById("addNoteBtn").onclick = () => {
     pages[currentPage].push({
-        text: "New Note", x: 150, y: 150, size: 150, color: "#fff740", rotation: 0
+        text: "New Note", x: 100, y: 100, size: 150, color: "#fff740", rotation: 0
     });
     renderPage();
+    selectNote(pages[currentPage].length - 1);
 };
 
 document.getElementById("zoomInBtn").onclick = () => { zoomLevel = Math.min(zoomLevel + 0.1, 3); updateZoom(); };
@@ -159,7 +174,12 @@ document.getElementById("leftArrow").onclick = () => {
     }, 600);
 };
 
-document.getElementById("addPageBtn").onclick = () => { pages.push([]); currentPage = pages.length - 1; renderPage(); };
+document.getElementById("addPageBtn").onclick = () => { 
+    pages.push([]); 
+    currentPage = pages.length - 1; 
+    renderPage(); 
+};
+
 document.getElementById("deletePageBtn").onclick = () => {
     if (pages.length > 1) {
         pages.splice(currentPage, 1);
@@ -168,8 +188,6 @@ document.getElementById("deletePageBtn").onclick = () => {
     }
 };
 
-// --- TOUCH AND MOUSE HANDLERS ---
-
 function enableDrag(div, index) {
     let ox, oy;
 
@@ -177,12 +195,11 @@ function enableDrag(div, index) {
         if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
         
         const pos = getEventClient(e);
-        // Calculate offset without relying on e.offsetX which isn't available in touch
         ox = pos.pageX - parseFloat(div.style.left || 0);
         oy = pos.pageY - parseFloat(div.style.top || 0);
 
         function moveDrag(e) {
-            if (e.type.includes('touch')) e.preventDefault(); // Stop mobile screen from scrolling
+            if (e.cancelable) e.preventDefault();
             const movePos = getEventClient(e);
             let x = movePos.pageX - ox;
             let y = movePos.pageY - oy;
@@ -201,7 +218,6 @@ function enableDrag(div, index) {
             saveData();
         }
 
-        // Bind standard mouse and touch events
         document.addEventListener("mousemove", moveDrag);
         document.addEventListener("mouseup", stopDrag);
         document.addEventListener("touchmove", moveDrag, { passive: false });
@@ -218,9 +234,10 @@ function enableRotate(div, index) {
     
     function startRotate(e) {
         e.stopPropagation();
+        e.preventDefault();
 
         function moveRotate(e) {
-            if (e.type.includes('touch')) e.preventDefault();
+            if (e.cancelable) e.preventDefault();
             const pos = getEventClient(e);
             const rect = div.getBoundingClientRect();
             const cx = rect.left + rect.width / 2;
@@ -258,14 +275,15 @@ function enableResize(div, index) {
 
     function startResize(e) {
         e.stopPropagation();
+        e.preventDefault();
 
         function moveResize(e) {
-            if (e.type.includes('touch')) e.preventDefault();
+            if (e.cancelable) e.preventDefault();
             const pos = getEventClient(e);
             const rect = div.getBoundingClientRect();
-            const newSize = Math.max(60, pos.x - rect.left);
+            // Adjust for zoom level to keep resizing accurate
+            const newSize = Math.max(60, (pos.x - rect.left) / zoomLevel);
             
-            // Performance Fix: directly change styles instead of doing a full renderPage() loop mid-drag
             div.style.width = newSize + "px";
             div.style.height = newSize + "px";
             pages[currentPage][index].size = newSize;
@@ -277,7 +295,6 @@ function enableResize(div, index) {
             document.removeEventListener("touchmove", moveResize);
             document.removeEventListener("touchend", stopResize);
             saveData();
-            selectNote(index); // Ensure editing panel updates correctly
         }
 
         document.addEventListener("mousemove", moveResize);
@@ -294,14 +311,28 @@ function enableDelete(div, index) {
     div.querySelector(".deleteBtn").onclick = (e) => {
         e.stopPropagation();
         pages[currentPage].splice(index, 1);
+        selectedIndex = null;
+        editPanel.style.display = "none";
         renderPage();
+        saveData();
     };
 }
 
-// --- BUTTONS ---
+document.getElementById("frontBtn").onclick = () => { 
+    if (selectedIndex === null) return;
+    let n = pages[currentPage].splice(selectedIndex, 1)[0]; 
+    pages[currentPage].push(n); 
+    renderPage(); 
+    selectNote(pages[currentPage].length - 1);
+};
 
-document.getElementById("frontBtn").onclick = () => { let n = pages[currentPage].splice(selectedIndex, 1)[0]; pages[currentPage].push(n); renderPage(); };
-document.getElementById("backBtnLayer").onclick = () => { let n = pages[currentPage].splice(selectedIndex, 1)[0]; pages[currentPage].unshift(n); renderPage(); };
+document.getElementById("backBtnLayer").onclick = () => { 
+    if (selectedIndex === null) return;
+    let n = pages[currentPage].splice(selectedIndex, 1)[0]; 
+    pages[currentPage].unshift(n); 
+    renderPage(); 
+    selectNote(0);
+};
 
 document.getElementById("openBoardBtn").onclick = () => {
     document.getElementById("coverScreen").style.opacity = "0";
@@ -318,32 +349,25 @@ document.getElementById("backBtn").onclick = () => {
     setTimeout(() => { document.getElementById("coverScreen").style.opacity = "1"; }, 50);
 };
 
-// =======================
-// DOWNLOAD BOARD
-// =======================
 document.getElementById("downloadBtn").onclick = async () => {
     const page = document.getElementById("page");
-
     const originalTransform = page.style.transform;
     page.style.transform = "scale(1)";
-
     document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
 
     try {
-        const canvas = await html2canvas(page, {
-            useCORS: true,
-            scale: 2
-        });
-
+        const canvas = await html2canvas(page, { useCORS: true, scale: 2 });
         const link = document.createElement("a");
         link.download = `board-${currentPage + 1}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
     } catch (err) {
-        console.error(err);
+        console.error("Download failed:", err);
     }
-
     page.style.transform = originalTransform;
 };
 
-renderPage();
+// Start the app
+window.onload = () => {
+    renderPage();
+};
