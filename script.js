@@ -11,7 +11,6 @@ try {
 
 let zoomLevel = parseFloat(localStorage.getItem("boardZoom")) || 1;
 let currentPage = 0;
-let isFlipping = false;
 let selectedIndex = null;
 
 const get = (id) => document.getElementById(id);
@@ -87,13 +86,16 @@ function renderPage() {
         setupResize(div, idx);
         setupRotate(div, idx);
         
-        div.querySelector(".deleteBtn").onclick = (e) => {
-            e.stopPropagation();
-            pages[currentPage].splice(idx, 1);
-            selectedIndex = null;
-            renderPage();
-            saveData();
-        };
+        const dBtn = div.querySelector(".deleteBtn");
+        if(dBtn) {
+            dBtn.onclick = (e) => {
+                e.stopPropagation();
+                pages[currentPage].splice(idx, 1);
+                selectedIndex = null;
+                renderPage();
+                saveData();
+            };
+        }
     });
 
     const la = get("leftArrow");
@@ -113,12 +115,14 @@ function selectNote(idx) {
     const panel = get("editPanel");
     if (panel) {
         panel.style.display = "block";
-        get("noteEditBox").value = pages[currentPage][idx].text;
-        get("colorPicker").value = pages[currentPage][idx].color;
+        const editBox = get("noteEditBox");
+        const picker = get("colorPicker");
+        if(editBox) editBox.value = pages[currentPage][idx].text;
+        if(picker) picker.value = pages[currentPage][idx].color;
     }
 }
 
-// 4. INTERACTIONS
+// 4. INTERACTIONS (DRAG/RESIZE/ROTATE)
 function setupDrag(div, idx) {
     const start = (e) => {
         if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
@@ -155,6 +159,7 @@ function setupDrag(div, idx) {
 
 function setupResize(div, idx) {
     const h = div.querySelector(".resizeHandle");
+    if(!h) return;
     const start = (e) => {
         e.preventDefault(); e.stopPropagation();
         const move = (me) => {
@@ -181,6 +186,7 @@ function setupResize(div, idx) {
 function setupRotate(div, idx) {
     const h = div.querySelector(".rotateHandle");
     const l = div.querySelector(".rotateLabel");
+    if(!h) return;
     const start = (e) => {
         e.preventDefault(); e.stopPropagation();
         const move = (me) => {
@@ -192,7 +198,7 @@ function setupRotate(div, idx) {
             div.style.transform = `rotate(${ang}deg)`;
             pages[currentPage][idx].rotation = ang;
             let d = Math.round(ang % 360);
-            l.innerText = (d < 0 ? d + 360 : d) + "°";
+            if(l) l.innerText = (d < 0 ? d + 360 : d) + "°";
         };
         const stop = () => {
             window.removeEventListener("mousemove", move);
@@ -210,18 +216,22 @@ function setupRotate(div, idx) {
 
 // 5. GLOBAL INITIALIZATION
 document.addEventListener("DOMContentLoaded", () => {
-    
     const clickEvent = ('ontouchstart' in window) ? 'touchstart' : 'click';
 
-    // --- BOARD MANAGEMENT BUTTONS ---
-    get("addPageBtn").addEventListener(clickEvent, () => {
+    // Helper to safely attach events
+    const safeBind = (id, event, fn) => {
+        const el = get(id);
+        if (el) el.addEventListener(event, fn);
+    };
+
+    safeBind("addPageBtn", clickEvent, () => {
         pages.push([]);
         currentPage = pages.length - 1;
         renderPage();
         saveData();
     });
 
-    get("deletePageBtn").addEventListener(clickEvent, () => {
+    safeBind("deletePageBtn", clickEvent, () => {
         if (pages.length > 1) {
             pages.splice(currentPage, 1);
             currentPage = Math.max(0, currentPage - 1);
@@ -232,89 +242,86 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    get("backBtn").addEventListener(clickEvent, () => {
-        get("boardContainer").style.display = "none";
-        get("coverScreen").style.display = "flex";
+    safeBind("backBtn", clickEvent, () => {
+        const container = get("boardContainer");
+        const cover = get("coverScreen");
+        if(container) container.style.display = "none";
+        if(cover) cover.style.display = "flex";
     });
 
-    // --- EXISTING BUTTONS ---
-    get("addNoteBtn").addEventListener(clickEvent, () => {
+    safeBind("addNoteBtn", clickEvent, () => {
         pages[currentPage].push({ text: "New Note", x: 100, y: 100, size: 150, color: "#fff740", rotation: 0 });
         renderPage();
         selectNote(pages[currentPage].length - 1);
     });
 
-    get("leftArrow").addEventListener(clickEvent, (e) => {
+    safeBind("leftArrow", clickEvent, () => {
         if (currentPage > 0) { currentPage--; renderPage(); }
     });
 
-    get("rightArrow").addEventListener(clickEvent, (e) => {
+    safeBind("rightArrow", clickEvent, () => {
         if (currentPage < pages.length - 1) { currentPage++; renderPage(); }
     });
 
-    get("zoomInBtn").onclick = () => { zoomLevel = Math.min(zoomLevel + 0.1, 3); updateZoom(); };
-    get("zoomOutBtn").onclick = () => { zoomLevel = Math.max(zoomLevel - 0.1, 0.25); updateZoom(); };
+    safeBind("zoomInBtn", "click", () => { zoomLevel = Math.min(zoomLevel + 0.1, 3); updateZoom(); });
+    safeBind("zoomOutBtn", "click", () => { zoomLevel = Math.max(zoomLevel - 0.1, 0.25); updateZoom(); });
 
-    get("noteEditBox").oninput = (e) => {
+    safeBind("noteEditBox", "input", (e) => {
         if (selectedIndex !== null) {
             pages[currentPage][selectedIndex].text = e.target.value;
             renderPage();
             saveData();
         }
-    };
+    });
 
-    get("colorPicker").oninput = (e) => {
+    safeBind("colorPicker", "input", (e) => {
         if (selectedIndex !== null) {
             pages[currentPage][selectedIndex].color = e.target.value;
             renderPage();
             saveData();
         }
-    };
+    });
 
-    get("openBoardBtn").onclick = () => {
-        get("coverScreen").style.display = "none";
-        get("boardContainer").style.display = "block";
+    safeBind("openBoardBtn", "click", () => {
+        const cover = get("coverScreen");
+        const board = get("boardContainer");
+        if(cover) cover.style.display = "none";
+        if(board) board.style.display = "block";
         renderPage();
-    };
+    });
 
-    get("page").onclick = (e) => {
+    safeBind("page", "click", (e) => {
         if (e.target.id === "page") {
             selectedIndex = null;
-            get("editPanel").style.display = "none";
+            const panel = get("editPanel");
+            if(panel) panel.style.display = "none";
             document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
         }
-    };
+    });
 
-    // --- DOWNLOAD FUNCTION ---
-    get("downloadBtn").onclick = async () => {
+    safeBind("downloadBtn", "click", async () => {
         if (typeof html2canvas === "undefined") {
-            alert("Library loading. Try again in 2s.");
+            alert("Download library is still loading...");
             return;
         }
         const page = get("page");
+        if(!page) return;
         const originalTransform = page.style.transform;
         page.style.transform = "scale(1)";
         document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
 
         try {
-            const canvas = await window.html2canvas(page, {
-                useCORS: true,
-                scale: 2, 
-                logging: false,
-                allowTaint: true
-            });
+            const canvas = await window.html2canvas(page, { useCORS: true, scale: 2 });
             const link = document.createElement("a");
             link.download = `board-${currentPage + 1}.png`;
             link.href = canvas.toDataURL("image/png");
-            document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
         } catch (err) {
-            console.error("Download Error:", err);
+            console.error(err);
         } finally {
             page.style.transform = originalTransform;
         }
-    };
+    });
 
     renderPage();
 });
