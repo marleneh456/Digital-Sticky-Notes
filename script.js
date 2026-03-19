@@ -67,7 +67,6 @@ function renderPage() {
             <div class="rotateLabel">${disp}°</div>
         `;
 
-        // onclick works for both mouse clicks and mobile finger taps
         div.onclick = (e) => {
             e.stopPropagation();
             selectNote(index);
@@ -89,7 +88,8 @@ function selectNote(index) {
     document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
     selectedIndex = index;
     const note = pages[currentPage][index];
-    document.querySelectorAll(".noteItem")[index].classList.add("selected");
+    const noteElements = document.querySelectorAll(".noteItem");
+    if(noteElements[index]) noteElements[index].classList.add("selected");
     
     editPanel.style.display = "block";
     noteEditBox.value = note.text;
@@ -120,7 +120,7 @@ colorPicker.oninput = () => {
 
 document.getElementById("addNoteBtn").onclick = () => {
     pages[currentPage].push({
-        text: "New Note", x: 150, y: 150, size: 150, color: "#fff740", rotation: 0
+        text: "New Note", x: 50, y: 80, size: 150, color: "#fff740", rotation: 0
     });
     renderPage();
 };
@@ -128,28 +128,57 @@ document.getElementById("addNoteBtn").onclick = () => {
 document.getElementById("zoomInBtn").onclick = () => { zoomLevel = Math.min(zoomLevel + 0.1, 3); updateZoom(); };
 document.getElementById("zoomOutBtn").onclick = () => { zoomLevel = Math.max(zoomLevel - 0.1, 0.25); updateZoom(); };
 
+// --- PAGE NAVIGATION WITH TRANSITIONS ---
+
 document.getElementById("rightArrow").onclick = () => {
     if (isFlipping || currentPage >= pages.length - 1) return;
     isFlipping = true;
-    pageElem.classList.add("flipping-next");
+    
+    // Add CSS class for transition (Slide Out Left)
+    pageElem.style.transition = "transform 0.4s ease-in, opacity 0.4s";
+    pageElem.style.transform = `scale(${zoomLevel}) translateX(-100%)`;
+    pageElem.style.opacity = "0";
+
     setTimeout(() => {
         currentPage++;
+        pageElem.style.transition = "none"; // Reset for positioning
+        pageElem.style.transform = `scale(${zoomLevel}) translateX(100%)`;
         renderPage();
-        pageElem.classList.remove("flipping-next");
-        isFlipping = false;
-    }, 600);
+        
+        // Force Reflow
+        pageElem.offsetHeight;
+
+        // Slide In from Right
+        pageElem.style.transition = "transform 0.4s ease-out, opacity 0.4s";
+        pageElem.style.transform = `scale(${zoomLevel}) translateX(0)`;
+        pageElem.style.opacity = "1";
+        
+        setTimeout(() => { isFlipping = false; }, 400);
+    }, 400);
 };
 
 document.getElementById("leftArrow").onclick = () => {
     if (isFlipping || currentPage <= 0) return;
     isFlipping = true;
-    pageElem.classList.add("flipping-prev");
+
+    pageElem.style.transition = "transform 0.4s ease-in, opacity 0.4s";
+    pageElem.style.transform = `scale(${zoomLevel}) translateX(100%)`;
+    pageElem.style.opacity = "0";
+
     setTimeout(() => {
         currentPage--;
+        pageElem.style.transition = "none";
+        pageElem.style.transform = `scale(${zoomLevel}) translateX(-100%)`;
         renderPage();
-        pageElem.classList.remove("flipping-prev");
-        isFlipping = false;
-    }, 600);
+
+        pageElem.offsetHeight;
+
+        pageElem.style.transition = "transform 0.4s ease-out, opacity 0.4s";
+        pageElem.style.transform = `scale(${zoomLevel}) translateX(0)`;
+        pageElem.style.opacity = "1";
+
+        setTimeout(() => { isFlipping = false; }, 400);
+    }, 400);
 };
 
 document.getElementById("addPageBtn").onclick = () => { pages.push([]); currentPage = pages.length - 1; renderPage(); };
@@ -170,16 +199,22 @@ function enableDrag(div, index) {
         if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
         
         const pos = getEventClient(e);
-        // Calculate offset without relying on e.offsetX which isn't available in touch
         ox = pos.pageX - parseFloat(div.style.left || 0);
         oy = pos.pageY - parseFloat(div.style.top || 0);
 
         function moveDrag(e) {
-            if (e.type.includes('touch')) e.preventDefault(); // Stop mobile screen from scrolling
+            if (e.type.includes('touch')) e.preventDefault();
             const movePos = getEventClient(e);
+            
             let x = movePos.pageX - ox;
             let y = movePos.pageY - oy;
-            
+
+            // BARRIER LOGIC: Prevent note from being stuck or hidden by top bar
+            // Assuming top bar is roughly 60px-80px. We'll clamp Y to minimum 10px.
+            const TOP_BARRIER = 10; 
+            if (y < TOP_BARRIER) y = TOP_BARRIER;
+            if (x < 0) x = 0;
+
             div.style.left = x + "px"; 
             div.style.top = y + "px";
             pages[currentPage][index].x = x; 
@@ -194,7 +229,6 @@ function enableDrag(div, index) {
             saveData();
         }
 
-        // Bind standard mouse and touch events
         document.addEventListener("mousemove", moveDrag);
         document.addEventListener("mouseup", stopDrag);
         document.addEventListener("touchmove", moveDrag, { passive: false });
@@ -258,7 +292,6 @@ function enableResize(div, index) {
             const rect = div.getBoundingClientRect();
             const newSize = Math.max(60, pos.x - rect.left);
             
-            // Performance Fix: directly change styles instead of doing a full renderPage() loop mid-drag
             div.style.width = newSize + "px";
             div.style.height = newSize + "px";
             pages[currentPage][index].size = newSize;
@@ -270,7 +303,7 @@ function enableResize(div, index) {
             document.removeEventListener("touchmove", moveResize);
             document.removeEventListener("touchend", stopResize);
             saveData();
-            selectNote(index); // Ensure editing panel updates correctly
+            selectNote(index);
         }
 
         document.addEventListener("mousemove", moveResize);
@@ -293,8 +326,19 @@ function enableDelete(div, index) {
 
 // --- BUTTONS ---
 
-document.getElementById("frontBtn").onclick = () => { let n = pages[currentPage].splice(selectedIndex, 1)[0]; pages[currentPage].push(n); renderPage(); };
-document.getElementById("backBtnLayer").onclick = () => { let n = pages[currentPage].splice(selectedIndex, 1)[0]; pages[currentPage].unshift(n); renderPage(); };
+document.getElementById("frontBtn").onclick = () => { 
+    if(selectedIndex === null) return;
+    let n = pages[currentPage].splice(selectedIndex, 1)[0]; 
+    pages[currentPage].push(n); 
+    renderPage(); 
+};
+
+document.getElementById("backBtnLayer").onclick = () => { 
+    if(selectedIndex === null) return;
+    let n = pages[currentPage].splice(selectedIndex, 1)[0]; 
+    pages[currentPage].unshift(n); 
+    renderPage(); 
+};
 
 document.getElementById("openBoardBtn").onclick = () => {
     document.getElementById("coverScreen").style.opacity = "0";
@@ -316,10 +360,8 @@ document.getElementById("backBtn").onclick = () => {
 // =======================
 document.getElementById("downloadBtn").onclick = async () => {
     const page = document.getElementById("page");
-
     const originalTransform = page.style.transform;
     page.style.transform = "scale(1)";
-
     document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
 
     try {
@@ -327,16 +369,15 @@ document.getElementById("downloadBtn").onclick = async () => {
             useCORS: true,
             scale: 2
         });
-
         const link = document.createElement("a");
         link.download = `board-${currentPage + 1}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
     } catch (err) {
-        console.error(err);
+        console.error("Download failed:", err);
     }
-
     page.style.transform = originalTransform;
 };
 
+// Initial Render
 renderPage();
