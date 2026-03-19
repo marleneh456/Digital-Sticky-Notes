@@ -311,4 +311,32 @@ document.getElementById("backBtn").onclick = () => {
     setTimeout(() => { document.getElementById("coverScreen").style.opacity = "1"; }, 50);
 };
 
+// =======================
+// DOWNLOAD BOARD
+// =======================
+document.getElementById("downloadBtn").onclick = async () => {
+    const page = document.getElementById("page");
+
+    const originalTransform = page.style.transform;
+    page.style.transform = "scale(1)";
+
+    document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
+
+    try {
+        const canvas = await html2canvas(page, {
+            useCORS: true,
+            scale: 2
+        });
+
+        const link = document.createElement("a");
+        link.download = `board-${currentPage + 1}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    } catch (err) {
+        console.error(err);
+    }
+
+    page.style.transform = originalTransform;
+};
+
 renderPage();

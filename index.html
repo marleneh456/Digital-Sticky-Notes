@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sticky Note Bulletin Board</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- ✅ ADD THIS (html2canvas CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -22,15 +25,21 @@
         <button id="addPageBtn">Add Board</button>
         <button id="deletePageBtn">Delete Board</button>
         <button id="addNoteBtn">Add Sticky Note</button>
+
         <button id="zoomOutBtn">-</button>
         <span id="zoomLabel">100%</span>
         <button id="zoomInBtn">+</button>
+
+        <!-- ✅ NEW DOWNLOAD BUTTON -->
+        <button id="downloadBtn">Download Board</button>
     </div>
 
     <button id="leftArrow" class="nav-arrow">&#11104;</button>
+
     <div id="boardWrapper">
         <div id="page"></div>
     </div>
+
     <button id="rightArrow" class="nav-arrow">&#11106;</button>
 
     <div id="editPanel">

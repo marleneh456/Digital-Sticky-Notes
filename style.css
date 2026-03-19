@@ -12,8 +12,7 @@ html, body{
 #coverScreen {
     position: fixed;
     width: 100%; height: 100vh;
-    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('bulletin board.jpg');
-    background-size: cover;
+    background-color: sandybrown;
     display: flex; align-items: center; justify-content: center;
     transition: 1s; z-index: 10;
 }
@@ -27,7 +26,6 @@ html, body{
 #boardContainer {
     position: absolute;
     width: 100%; height: 100vh;
-    background: url('bulletin board.jpg');
     background-size: cover;
     display: none;
     font-weight: bold;
@@ -60,9 +58,24 @@ html, body{
 }
 
 #page {
-    position: absolute; width: 100%; height: 100%;
-    transition: transform 0.6s ease-in-out, opacity 0.6s;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
+
+/* ✅ Background image inside page */
+#boardBg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
 
 .flipping-next { transform-origin: left center; transform: rotateY(-180deg); opacity: 0; }
 .flipping-prev { transform-origin: right center; transform: rotateY(180deg); opacity: 0; }
@@ -92,6 +105,7 @@ html, body{
     cursor: grab; display: flex; align-items: center;
     justify-content: center; text-align: center;
     font-size: 16px; transform-origin: center;
+    z-index: 1;
 }
 
 .noteItem.selected { outline: 3px solid #4c5eff; }
