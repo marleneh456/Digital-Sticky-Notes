@@ -73,7 +73,6 @@ function renderPage() {
             <div class="rotateLabel">${d}°</div>
         `;
 
-        // Selection Logic (Works for Mobile & Desktop)
         const selectHandler = (e) => {
             if (e.target.classList.contains("deleteBtn") || e.target.className.includes("Handle")) return;
             e.stopPropagation();
@@ -84,7 +83,6 @@ function renderPage() {
 
         container.appendChild(div);
         
-        // Attach Interaction Behaviors
         setupDrag(div, idx);
         setupResize(div, idx);
         setupRotate(div, idx);
@@ -98,7 +96,6 @@ function renderPage() {
         };
     });
 
-    // Arrow State
     const la = get("leftArrow");
     const ra = get("rightArrow");
     if (la) la.classList.toggle("disabled", currentPage === 0);
@@ -121,7 +118,7 @@ function selectNote(idx) {
     }
 }
 
-// 4. INTERACTIONS (DRAG, RESIZE, ROTATE)
+// 4. INTERACTIONS
 function setupDrag(div, idx) {
     const start = (e) => {
         if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
@@ -159,8 +156,7 @@ function setupDrag(div, idx) {
 function setupResize(div, idx) {
     const h = div.querySelector(".resizeHandle");
     const start = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         const move = (me) => {
             const mp = getPos(me);
             const rect = div.getBoundingClientRect();
@@ -186,8 +182,7 @@ function setupRotate(div, idx) {
     const h = div.querySelector(".rotateHandle");
     const l = div.querySelector(".rotateLabel");
     const start = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         const move = (me) => {
             const mp = getPos(me);
             const r = div.getBoundingClientRect();
@@ -216,7 +211,7 @@ function setupRotate(div, idx) {
 // 5. GLOBAL INITIALIZATION
 document.addEventListener("DOMContentLoaded", () => {
     
-    // UI Navigation Fix
+    // Support for both Mobile Touch and Desktop Click
     const clickEvent = ('ontouchstart' in window) ? 'touchstart' : 'click';
 
     get("addNoteBtn").addEventListener(clickEvent, () => {
@@ -265,6 +260,34 @@ document.addEventListener("DOMContentLoaded", () => {
             get("editPanel").style.display = "none";
             document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
         }
+    };
+
+    // DOWNLOAD FUNCTIONALITY
+    get("downloadBtn").onclick = async () => {
+        const page = get("page");
+        const originalTransform = page.style.transform;
+        
+        // Temporarily reset zoom to 1 for a high-quality capture
+        page.style.transform = "scale(1)";
+        document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
+
+        try {
+            const canvas = await html2canvas(page, {
+                useCORS: true,
+                scale: 2, // High resolution
+                backgroundColor: null
+            });
+
+            const link = document.createElement("a");
+            link.download = `board-${currentPage + 1}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        } catch (err) {
+            console.error("Download Error:", err);
+            alert("Download failed. Make sure html2canvas is loaded.");
+        }
+
+        page.style.transform = originalTransform;
     };
 
     renderPage();
