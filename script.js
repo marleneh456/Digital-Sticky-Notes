@@ -1,268 +1,270 @@
 // script.js
 
-let pages = JSON.parse(localStorage.getItem("stickyPages")) || [[]];
+// 1. DATA INITIALIZATION
+let pages = [[]];
+try {
+    const saved = localStorage.getItem("stickyPages");
+    if (saved) pages = JSON.parse(saved);
+} catch (e) {
+    console.error("Storage error:", e);
+}
+
 let zoomLevel = parseFloat(localStorage.getItem("boardZoom")) || 1;
 let currentPage = 0;
 let isFlipping = false;
 let selectedIndex = null;
 
-const getElem = (id) => document.getElementById(id);
+const get = (id) => document.getElementById(id);
 
+// 2. CORE UTILITIES
 function saveData() {
     localStorage.setItem("stickyPages", JSON.stringify(pages));
     localStorage.setItem("boardZoom", zoomLevel);
 }
 
-function updateZoom() {
-    const pageElem = getElem("page");
-    if (!pageElem) return;
-    pageElem.style.transform = `scale(${zoomLevel})`;
-    getElem("zoomLabel").textContent = Math.round(zoomLevel * 100) + "%";
-    saveData();
+function getPos(e) {
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX, y: t.clientY, px: t.pageX, py: t.pageY };
 }
 
-function renderPage() {
-    const pageElem = getElem("page");
-    if (!pageElem) return;
+function updateZoom() {
+    const p = get("page");
+    if (p) {
+        p.style.transform = `scale(${zoomLevel})`;
+        const zl = get("zoomLabel");
+        if (zl) zl.textContent = Math.round(zoomLevel * 100) + "%";
+        saveData();
+    }
+}
 
-    pageElem.innerHTML = "";
-    getElem("pageNumber").textContent = `Board ${currentPage + 1} / ${pages.length}`;
-    
-    pages[currentPage].forEach((note, index) => {
+// 3. RENDERING
+function renderPage() {
+    const container = get("page");
+    if (!container) return;
+
+    container.innerHTML = "";
+    const num = get("pageNumber");
+    if (num) num.textContent = `Board ${currentPage + 1} / ${pages.length}`;
+
+    pages[currentPage].forEach((note, idx) => {
         const div = document.createElement("div");
         div.className = "noteItem";
-        if (selectedIndex === index) div.classList.add("selected");
-        
-        div.style.left = note.x + "px";
-        div.style.top = note.y + "px";
-        div.style.width = note.size + "px";
-        div.style.height = note.size + "px";
-        div.style.backgroundColor = note.color;
-        div.style.transform = `rotate(${note.rotation || 0}deg)`;
-        
-        let disp = Math.round((note.rotation || 0) % 360);
-        if (disp < 0) disp += 360;
+        if (selectedIndex === idx) div.classList.add("selected");
 
-        div.innerHTML = `
-            <div class="noteContent" style="pointer-events:none;">${note.text}</div>
-            <button class="deleteBtn">×</button>
-            <div class="resizeHandle"></div>
-            <div class="rotateHandle"></div>
-            <div class="rotateLabel">${disp}°</div>
+        div.style.cssText = `
+            left: ${note.x}px;
+            top: ${note.y}px;
+            width: ${note.size}px;
+            height: ${note.size}px;
+            background-color: ${note.color};
+            transform: rotate(${note.rotation || 0}deg);
+            position: absolute;
+            touch-action: none;
         `;
 
-        div.onmousedown = div.ontouchstart = (e) => {
-            if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
-            selectNote(index);
-        };
+        let d = Math.round((note.rotation || 0) % 360);
+        if (d < 0) d += 360;
 
-        pageElem.appendChild(div);
-        enableDrag(div, index);
-        enableResize(div, index);
-        enableRotate(div, index);
-        enableDelete(div, index);
+        div.innerHTML = `
+            <div class="noteContent">${note.text}</div>
+            <button class="deleteBtn" style="pointer-events: auto;">×</button>
+            <div class="resizeHandle" style="pointer-events: auto;"></div>
+            <div class="rotateHandle" style="pointer-events: auto;"></div>
+            <div class="rotateLabel">${d}°</div>
+        `;
+
+        // Selection Logic (Works for Mobile & Desktop)
+        const selectHandler = (e) => {
+            if (e.target.classList.contains("deleteBtn") || e.target.className.includes("Handle")) return;
+            e.stopPropagation();
+            selectNote(idx);
+        };
+        div.addEventListener("mousedown", selectHandler);
+        div.addEventListener("touchstart", selectHandler, { passive: true });
+
+        container.appendChild(div);
+        
+        // Attach Interaction Behaviors
+        setupDrag(div, idx);
+        setupResize(div, idx);
+        setupRotate(div, idx);
+        
+        div.querySelector(".deleteBtn").onclick = (e) => {
+            e.stopPropagation();
+            pages[currentPage].splice(idx, 1);
+            selectedIndex = null;
+            renderPage();
+            saveData();
+        };
     });
 
-    // Update arrow states
-    getElem("leftArrow").classList.toggle("disabled", currentPage === 0);
-    getElem("rightArrow").classList.toggle("disabled", currentPage === pages.length - 1);
-    
+    // Arrow State
+    const la = get("leftArrow");
+    const ra = get("rightArrow");
+    if (la) la.classList.toggle("disabled", currentPage === 0);
+    if (ra) ra.classList.toggle("disabled", currentPage === pages.length - 1);
+
     updateZoom();
 }
 
-function selectNote(index) {
-    selectedIndex = index;
+function selectNote(idx) {
+    selectedIndex = idx;
     document.querySelectorAll(".noteItem").forEach((n, i) => {
-        n.classList.toggle("selected", i === index);
+        n.classList.toggle("selected", i === idx);
     });
     
-    const note = pages[currentPage][index];
-    getElem("editPanel").style.display = "block";
-    getElem("noteEditBox").value = note.text;
-    getElem("colorPicker").value = note.color;
+    const panel = get("editPanel");
+    if (panel) {
+        panel.style.display = "block";
+        get("noteEditBox").value = pages[currentPage][idx].text;
+        get("colorPicker").value = pages[currentPage][idx].color;
+    }
 }
 
-// --- NAVIGATION LOGIC ---
-const flipNext = () => {
-    if (isFlipping || currentPage >= pages.length - 1) return;
-    isFlipping = true;
-    getElem("page").classList.add("flipping-next");
-    setTimeout(() => {
-        currentPage++;
-        renderPage();
-        getElem("page").classList.remove("flipping-next");
-        isFlipping = false;
-    }, 600);
-};
-
-const flipPrev = () => {
-    if (isFlipping || currentPage <= 0) return;
-    isFlipping = true;
-    getElem("page").classList.add("flipping-prev");
-    setTimeout(() => {
-        currentPage--;
-        renderPage();
-        getElem("page").classList.remove("flipping-prev");
-        isFlipping = false;
-    }, 600);
-};
-
-// --- DRAG / RESIZE / ROTATE HELPERS ---
-function getEventClient(e) {
-    const touch = e.touches && e.touches[0];
-    return {
-        x: touch ? touch.clientX : e.clientX,
-        y: touch ? touch.clientY : e.clientY,
-        pageX: touch ? touch.pageX : e.pageX,
-        pageY: touch ? touch.pageY : e.pageY
-    };
-}
-
-function enableDrag(div, index) {
+// 4. INTERACTIONS (DRAG, RESIZE, ROTATE)
+function setupDrag(div, idx) {
     const start = (e) => {
         if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
-        const pos = getEventClient(e);
-        const ox = pos.pageX - parseFloat(div.style.left || 0);
-        const oy = pos.pageY - parseFloat(div.style.top || 0);
+        const p = getPos(e);
+        const ox = p.px - parseFloat(div.style.left);
+        const oy = p.py - parseFloat(div.style.top);
 
         const move = (me) => {
-            if (me.cancelable) me.preventDefault();
-            const mPos = getEventClient(me);
-            const nx = mPos.pageX - ox;
-            const ny = mPos.pageY - oy;
+            const mp = getPos(me);
+            const nx = mp.px - ox;
+            const ny = mp.py - oy;
             div.style.left = nx + "px";
             div.style.top = ny + "px";
-            pages[currentPage][index].x = nx;
-            pages[currentPage][index].y = ny;
+            pages[currentPage][idx].x = nx;
+            pages[currentPage][idx].y = ny;
         };
 
         const stop = () => {
-            document.removeEventListener("mousemove", move);
-            document.removeEventListener("mouseup", stop);
-            document.removeEventListener("touchmove", move);
-            document.removeEventListener("touchend", stop);
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("mouseup", stop);
+            window.removeEventListener("touchmove", move);
+            window.removeEventListener("touchend", stop);
             saveData();
         };
 
-        document.addEventListener("mousemove", move);
-        document.addEventListener("mouseup", stop);
-        document.addEventListener("touchmove", move, { passive: false });
-        document.addEventListener("touchend", stop);
+        window.addEventListener("mousemove", move);
+        window.addEventListener("mouseup", stop);
+        window.addEventListener("touchmove", move, { passive: false });
+        window.addEventListener("touchend", stop);
     };
     div.addEventListener("mousedown", start);
     div.addEventListener("touchstart", start, { passive: false });
 }
 
-function enableResize(div, index) {
-    const handle = div.querySelector(".resizeHandle");
+function setupResize(div, idx) {
+    const h = div.querySelector(".resizeHandle");
     const start = (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const move = (me) => {
-            const mPos = getEventClient(me);
+            const mp = getPos(me);
             const rect = div.getBoundingClientRect();
-            const newSize = Math.max(60, (mPos.x - rect.left) / zoomLevel);
-            div.style.width = div.style.height = newSize + "px";
-            pages[currentPage][index].size = newSize;
+            const ns = Math.max(60, (mp.x - rect.left) / zoomLevel);
+            div.style.width = div.style.height = ns + "px";
+            pages[currentPage][idx].size = ns;
         };
         const stop = () => {
-            document.removeEventListener("mousemove", move);
-            document.removeEventListener("touchmove", move);
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("touchmove", move);
             saveData();
         };
-        document.addEventListener("mousemove", move);
-        document.addEventListener("touchmove", move, { passive: false });
-        document.addEventListener("mouseup", stop, { once: true });
-        document.addEventListener("touchend", stop, { once: true });
+        window.addEventListener("mousemove", move);
+        window.addEventListener("touchmove", move, { passive: false });
+        window.addEventListener("mouseup", stop, { once: true });
+        window.addEventListener("touchend", stop, { once: true });
     };
-    handle.addEventListener("mousedown", start);
-    handle.addEventListener("touchstart", start, { passive: false });
+    h.addEventListener("mousedown", start);
+    h.addEventListener("touchstart", start, { passive: false });
 }
 
-function enableRotate(div, index) {
-    const handle = div.querySelector(".rotateHandle");
-    const label = div.querySelector(".rotateLabel");
+function setupRotate(div, idx) {
+    const h = div.querySelector(".rotateHandle");
+    const l = div.querySelector(".rotateLabel");
     const start = (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const move = (me) => {
-            const mPos = getEventClient(me);
-            const rect = div.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
-            const angle = Math.atan2(mPos.y - cy, mPos.x - cx) * 180 / Math.PI + 90;
-            div.style.transform = `rotate(${angle}deg)`;
-            pages[currentPage][index].rotation = angle;
-            let d = Math.round(angle % 360);
-            label.innerText = (d < 0 ? d + 360 : d) + "°";
+            const mp = getPos(me);
+            const r = div.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const ang = Math.atan2(mp.y - cy, mp.x - cx) * 180 / Math.PI + 90;
+            div.style.transform = `rotate(${ang}deg)`;
+            pages[currentPage][idx].rotation = ang;
+            let d = Math.round(ang % 360);
+            l.innerText = (d < 0 ? d + 360 : d) + "°";
         };
         const stop = () => {
-            document.removeEventListener("mousemove", move);
-            document.removeEventListener("touchmove", move);
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("touchmove", move);
             saveData();
         };
-        document.addEventListener("mousemove", move);
-        document.addEventListener("touchmove", move, { passive: false });
-        document.addEventListener("mouseup", stop, { once: true });
-        document.addEventListener("touchend", stop, { once: true });
+        window.addEventListener("mousemove", move);
+        window.addEventListener("touchmove", move, { passive: false });
+        window.addEventListener("mouseup", stop, { once: true });
+        window.addEventListener("touchend", stop, { once: true });
     };
-    handle.addEventListener("mousedown", start);
-    handle.addEventListener("touchstart", start, { passive: false });
+    h.addEventListener("mousedown", start);
+    h.addEventListener("touchstart", start, { passive: false });
 }
 
-function enableDelete(div, index) {
-    div.querySelector(".deleteBtn").onclick = (e) => {
-        e.stopPropagation();
-        pages[currentPage].splice(index, 1);
-        selectedIndex = null;
-        renderPage();
-        saveData();
-    };
-}
-
-// --- INITIALIZATION ---
+// 5. GLOBAL INITIALIZATION
 document.addEventListener("DOMContentLoaded", () => {
-    // Standard Buttons
-    getElem("addNoteBtn").onclick = () => {
+    
+    // UI Navigation Fix
+    const clickEvent = ('ontouchstart' in window) ? 'touchstart' : 'click';
+
+    get("addNoteBtn").addEventListener(clickEvent, () => {
         pages[currentPage].push({ text: "New Note", x: 100, y: 100, size: 150, color: "#fff740", rotation: 0 });
         renderPage();
-    };
+        selectNote(pages[currentPage].length - 1);
+    });
 
-    getElem("noteEditBox").oninput = (e) => {
+    get("leftArrow").addEventListener(clickEvent, (e) => {
+        if (currentPage > 0) { currentPage--; renderPage(); }
+    });
+
+    get("rightArrow").addEventListener(clickEvent, (e) => {
+        if (currentPage < pages.length - 1) { currentPage++; renderPage(); }
+    });
+
+    get("zoomInBtn").onclick = () => { zoomLevel = Math.min(zoomLevel + 0.1, 3); updateZoom(); };
+    get("zoomOutBtn").onclick = () => { zoomLevel = Math.max(zoomLevel - 0.1, 0.25); updateZoom(); };
+
+    get("noteEditBox").oninput = (e) => {
         if (selectedIndex !== null) {
             pages[currentPage][selectedIndex].text = e.target.value;
-            // Update only the text div for performance
-            const noteDivs = document.querySelectorAll(".noteItem");
-            if(noteDivs[selectedIndex]) noteDivs[selectedIndex].querySelector(".noteContent").textContent = e.target.value;
+            const content = document.querySelectorAll(".noteItem")[selectedIndex].querySelector(".noteContent");
+            if (content) content.innerText = e.target.value;
             saveData();
         }
     };
 
-    getElem("colorPicker").oninput = (e) => {
+    get("colorPicker").oninput = (e) => {
         if (selectedIndex !== null) {
             pages[currentPage][selectedIndex].color = e.target.value;
-            const noteDivs = document.querySelectorAll(".noteItem");
-            if(noteDivs[selectedIndex]) noteDivs[selectedIndex].style.backgroundColor = e.target.value;
+            document.querySelectorAll(".noteItem")[selectedIndex].style.backgroundColor = e.target.value;
             saveData();
         }
     };
 
-    // Navigation Arrows - Using both click and touchstart for instant response
-    const lArrow = getElem("leftArrow");
-    const rArrow = getElem("rightArrow");
-    
-    lArrow.onclick = flipPrev;
-    lArrow.ontouchstart = (e) => { e.preventDefault(); flipPrev(); };
-    
-    rArrow.onclick = flipNext;
-    rArrow.ontouchstart = (e) => { e.preventDefault(); flipNext(); };
-
-    getElem("zoomInBtn").onclick = () => { zoomLevel = Math.min(zoomLevel + 0.1, 3); updateZoom(); };
-    getElem("zoomOutBtn").onclick = () => { zoomLevel = Math.max(zoomLevel - 0.1, 0.25); updateZoom(); };
-    getElem("addPageBtn").onclick = () => { pages.push([]); currentPage = pages.length - 1; renderPage(); };
-    
-    getElem("openBoardBtn").onclick = () => {
-        getElem("coverScreen").style.display = "none";
-        getElem("boardContainer").style.display = "block";
+    get("openBoardBtn").onclick = () => {
+        get("coverScreen").style.display = "none";
+        get("boardContainer").style.display = "block";
         renderPage();
+    };
+
+    get("page").onclick = (e) => {
+        if (e.target.id === "page") {
+            selectedIndex = null;
+            get("editPanel").style.display = "none";
+            document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
+        }
     };
 
     renderPage();
