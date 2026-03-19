@@ -32,13 +32,9 @@ html, body{
 }
 
 #pageNumber{
-    color: white;
     font-size: 18px;
 }
 
-#zoomLabel{
-    color: white;
-}
 .topBar {
     position: absolute; top: 10px; width: 100%;
     text-align: center; z-index: 5;
