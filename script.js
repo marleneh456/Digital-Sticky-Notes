@@ -213,6 +213,31 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const clickEvent = ('ontouchstart' in window) ? 'touchstart' : 'click';
 
+    // --- BOARD MANAGEMENT BUTTONS ---
+    get("addPageBtn").addEventListener(clickEvent, () => {
+        pages.push([]);
+        currentPage = pages.length - 1;
+        renderPage();
+        saveData();
+    });
+
+    get("deletePageBtn").addEventListener(clickEvent, () => {
+        if (pages.length > 1) {
+            pages.splice(currentPage, 1);
+            currentPage = Math.max(0, currentPage - 1);
+            renderPage();
+            saveData();
+        } else {
+            alert("Cannot delete the only board!");
+        }
+    });
+
+    get("backBtn").addEventListener(clickEvent, () => {
+        get("boardContainer").style.display = "none";
+        get("coverScreen").style.display = "flex";
+    });
+
+    // --- EXISTING BUTTONS ---
     get("addNoteBtn").addEventListener(clickEvent, () => {
         pages[currentPage].push({ text: "New Note", x: 100, y: 100, size: 150, color: "#fff740", rotation: 0 });
         renderPage();
@@ -260,31 +285,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // --- ENHANCED DOWNLOAD FUNCTION ---
+    // --- DOWNLOAD FUNCTION ---
     get("downloadBtn").onclick = async () => {
-        // 1. Check if library exists
         if (typeof html2canvas === "undefined") {
-            alert("The download library is still loading. Please wait 2 seconds and try again.");
+            alert("Library loading. Try again in 2s.");
             return;
         }
-
         const page = get("page");
         const originalTransform = page.style.transform;
-        
-        // 2. Prepare for capture
         page.style.transform = "scale(1)";
         document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
 
         try {
-            // 3. Capture
             const canvas = await window.html2canvas(page, {
                 useCORS: true,
                 scale: 2, 
                 logging: false,
                 allowTaint: true
             });
-
-            // 4. Trigger Download
             const link = document.createElement("a");
             link.download = `board-${currentPage + 1}.png`;
             link.href = canvas.toDataURL("image/png");
@@ -293,9 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.removeChild(link);
         } catch (err) {
             console.error("Download Error:", err);
-            alert("Could not generate image. Check your internet connection.");
         } finally {
-            // 5. Always reset zoom
             page.style.transform = originalTransform;
         }
     };
