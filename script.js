@@ -122,50 +122,57 @@ function selectNote(idx) {
     }
 }
 
-// 4. INTERACTIONS (DRAG/RESIZE/ROTATE)
 function setupDrag(div, idx) {
-    const start = (e) => {
-        if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
-        const p = getPos(e);
-        const ox = p.px - parseFloat(div.style.left);
-        const oy = p.py - parseFloat(div.style.top);
+    const page = get("page"); // Get the page element to calculate bounds
 
-        const move = (me) => {
-            const mp = getPos(me);
-            let nx = mp.px - ox;
-            let ny = mp.py - oy;
+    div.addEventListener("pointerdown", (e) => {
+        // Prevent dragging if clicking a button or handle
+        if (e.target.tagName === "BUTTON" || e.target.className.includes("Handle")) return;
+        
+        e.stopPropagation();
+        selectNote(idx); // Matches your existing selection logic
+        div.style.zIndex = 1000; // Bring to front while dragging
+        
+        let pageRect = page.getBoundingClientRect();
+        
+        // Calculate offset based on where the mouse grabbed the note
+        let offsetX = (e.clientX - pageRect.left) / zoomLevel - pages[currentPage][idx].x;
+        let offsetY = (e.clientY - pageRect.top) / zoomLevel - pages[currentPage][idx].y;
+        
+        div.setPointerCapture(e.pointerId);
 
-            // --- BARRIER LOGIC ADDED HERE ---
-            // Set this to the height of your top bar in pixels. 
-            // 70 is a good starting guess, but change it if your bar is thicker/thinner.
-            const TOP_BAR_HEIGHT = 70; 
+        const moveDrag = (me) => {
+            let nx = (me.clientX - pageRect.left) / zoomLevel - offsetX;
+            let ny = (me.clientY - pageRect.top) / zoomLevel - offsetY;
+
+            // --- REFINED BARRIER LOGIC ---
+            const topBar = document.querySelector('.topBar');
+            const TOP_BAR_HEIGHT = topBar ? topBar.offsetHeight : 70;
             
-            if (ny < TOP_BAR_HEIGHT) {
-                ny = TOP_BAR_HEIGHT; // Forces the note to stay below the barrier
-            }
-            // --------------------------------
+            // Calculate where the "safe zone" starts relative to internal zoomed coordinates
+            let barrierY = (TOP_BAR_HEIGHT - pageRect.top) / zoomLevel;
 
-            div.style.left = nx + "px";
+            if (ny < barrierY) {
+                ny = barrierY; 
+            }
+            // -----------------------------
+
+            div.style.left = nx + "px"; 
             div.style.top = ny + "px";
-            pages[currentPage][idx].x = nx;
+            pages[currentPage][idx].x = nx; 
             pages[currentPage][idx].y = ny;
         };
 
-        const stop = () => {
-            window.removeEventListener("mousemove", move);
-            window.removeEventListener("mouseup", stop);
-            window.removeEventListener("touchmove", move);
-            window.removeEventListener("touchend", stop);
-            saveData();
+        const endDrag = (me) => { 
+            div.style.zIndex = ""; 
+            div.releasePointerCapture(me.pointerId);
+            div.removeEventListener("pointermove", moveDrag);
+            saveData(); 
         };
 
-        window.addEventListener("mousemove", move);
-        window.addEventListener("mouseup", stop);
-        window.addEventListener("touchmove", move, { passive: false });
-        window.addEventListener("touchend", stop);
-    };
-    div.addEventListener("mousedown", start);
-    div.addEventListener("touchstart", start, { passive: false });
+        div.addEventListener("pointermove", moveDrag);
+        div.addEventListener("pointerup", endDrag, {once:true});
+    });
 }
 
 function setupResize(div, idx) {
