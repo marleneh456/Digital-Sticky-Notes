@@ -64,9 +64,8 @@ function renderPage() {
         let d = Math.round((note.rotation || 0) % 360);
         if (d < 0) d += 360;
 
-        // Note: Explicitly setting font-family here helps html2canvas capture it accurately
         div.innerHTML = `
-            <div class="noteContent" style="font-family: inherit;">${note.text}</div>
+            <div class="noteContent">${note.text}</div>
             <button class="deleteBtn" style="pointer-events: auto;">×</button>
             <div class="resizeHandle" style="pointer-events: auto;"></div>
             <div class="rotateHandle" style="pointer-events: auto;"></div>
@@ -123,7 +122,7 @@ function selectNote(idx) {
     }
 }
 
-// 4. INTERACTIONS
+// 4. INTERACTIONS (DRAG/RESIZE/ROTATE)
 function setupDrag(div, idx) {
     const start = (e) => {
         if (e.target.className.includes("Handle") || e.target.className === "deleteBtn") return;
@@ -136,8 +135,15 @@ function setupDrag(div, idx) {
             let nx = mp.px - ox;
             let ny = mp.py - oy;
 
+            // --- BARRIER LOGIC ADDED HERE ---
+            // Set this to the height of your top bar in pixels. 
+            // 70 is a good starting guess, but change it if your bar is thicker/thinner.
             const TOP_BAR_HEIGHT = 70; 
-            if (ny < TOP_BAR_HEIGHT) ny = TOP_BAR_HEIGHT;
+            
+            if (ny < TOP_BAR_HEIGHT) {
+                ny = TOP_BAR_HEIGHT; // Forces the note to stay below the barrier
+            }
+            // --------------------------------
 
             div.style.left = nx + "px";
             div.style.top = ny + "px";
@@ -223,6 +229,7 @@ function setupRotate(div, idx) {
 document.addEventListener("DOMContentLoaded", () => {
     const clickEvent = ('ontouchstart' in window) ? 'touchstart' : 'click';
 
+    // Helper to safely attach events
     const safeBind = (id, event, fn) => {
         const el = get(id);
         if (el) el.addEventListener(event, fn);
@@ -254,6 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     safeBind("addNoteBtn", clickEvent, () => {
+        // Notes spawn at y:100, which should be safely below a 70px top bar
         pages[currentPage].push({ text: "New Note", x: 100, y: 100, size: 150, color: "#fff740", rotation: 0 });
         renderPage();
         selectNote(pages[currentPage].length - 1);
@@ -303,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // UPDATED DOWNLOAD LOGIC
     safeBind("downloadBtn", "click", async () => {
         if (typeof html2canvas === "undefined") {
             alert("Download library is still loading...");
@@ -311,37 +318,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const page = get("page");
         if(!page) return;
-
         const originalTransform = page.style.transform;
-        
-        // 1. Reset scale to 1 for high-quality capture
-        page.style.transform = "none";
+        page.style.transform = "scale(1)";
         document.querySelectorAll(".noteItem").forEach(n => n.classList.remove("selected"));
 
         try {
-            // 2. Use better capture options
-            const canvas = await window.html2canvas(page, { 
-                useCORS: true, 
-                scale: 2, // Higher resolution
-                backgroundColor: null, // Transparent background
-                logging: false,
-                onclone: (clonedDoc) => {
-                    // Ensure fonts are forced on cloned elements
-                    const notes = clonedDoc.querySelectorAll(".noteContent");
-                    notes.forEach(n => {
-                        n.style.fontFamily = getComputedStyle(document.body).fontFamily;
-                    });
-                }
-            });
-
+            const canvas = await window.html2canvas(page, { useCORS: true, scale: 2 });
             const link = document.createElement("a");
             link.download = `board-${currentPage + 1}.png`;
             link.href = canvas.toDataURL("image/png");
             link.click();
         } catch (err) {
-            console.error("Download failed:", err);
+            console.error(err);
         } finally {
-            // 3. Restore the user's zoom level
             page.style.transform = originalTransform;
         }
     });
