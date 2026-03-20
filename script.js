@@ -342,5 +342,49 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    safeBind("frontBtn", "click", () => {
+    if (selectedIndex !== null) {
+        const arr = pages[currentPage];
+        const note = arr.splice(selectedIndex, 1)[0];
+        arr.push(note); // Move to end of array (top of visual stack)
+        selectedIndex = arr.length - 1;
+        renderPage();
+        saveData();
+    }
+});
+
+safeBind("backBtnLayer", "click", () => {
+    if (selectedIndex !== null) {
+        const arr = pages[currentPage];
+        const note = arr.splice(selectedIndex, 1)[0];
+        arr.unshift(note); // Move to start of array (bottom of visual stack)
+        selectedIndex = 0;
+        renderPage();
+        saveData();
+    }
+});
+
+safeBind("forwardBtn", "click", () => {
+    if (selectedIndex !== null && selectedIndex < pages[currentPage].length - 1) {
+        const arr = pages[currentPage];
+        // Swap with the next item
+        [arr[selectedIndex], arr[selectedIndex + 1]] = [arr[selectedIndex + 1], arr[selectedIndex]];
+        selectedIndex++;
+        renderPage();
+        saveData();
+    }
+});
+
+safeBind("backwardBtn", "click", () => {
+    if (selectedIndex !== null && selectedIndex > 0) {
+        const arr = pages[currentPage];
+        // Swap with the previous item
+        [arr[selectedIndex], arr[selectedIndex - 1]] = [arr[selectedIndex - 1], arr[selectedIndex]];
+        selectedIndex--;
+        renderPage();
+        saveData();
+    }
+});
+
     renderPage();
 });
