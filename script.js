@@ -342,49 +342,56 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    safeBind("frontBtn", "click", () => {
-    if (selectedIndex !== null) {
+// --- LAYER PANEL TOUCH & CLICK SUPPORT ---
+const layerActions = {
+    front: () => {
         const arr = pages[currentPage];
         const note = arr.splice(selectedIndex, 1)[0];
-        arr.push(note); // Move to end of array (top of visual stack)
+        arr.push(note);
         selectedIndex = arr.length - 1;
-        renderPage();
-        saveData();
-    }
-});
-
-safeBind("backBtnLayer", "click", () => {
-    if (selectedIndex !== null) {
+    },
+    back: () => {
         const arr = pages[currentPage];
         const note = arr.splice(selectedIndex, 1)[0];
-        arr.unshift(note); // Move to start of array (bottom of visual stack)
+        arr.unshift(note);
         selectedIndex = 0;
-        renderPage();
-        saveData();
-    }
-});
-
-safeBind("forwardBtn", "click", () => {
-    if (selectedIndex !== null && selectedIndex < pages[currentPage].length - 1) {
+    },
+    forward: () => {
         const arr = pages[currentPage];
-        // Swap with the next item
-        [arr[selectedIndex], arr[selectedIndex + 1]] = [arr[selectedIndex + 1], arr[selectedIndex]];
-        selectedIndex++;
-        renderPage();
-        saveData();
-    }
-});
-
-safeBind("backwardBtn", "click", () => {
-    if (selectedIndex !== null && selectedIndex > 0) {
+        if (selectedIndex < arr.length - 1) {
+            [arr[selectedIndex], arr[selectedIndex + 1]] = [arr[selectedIndex + 1], arr[selectedIndex]];
+            selectedIndex++;
+        }
+    },
+    backward: () => {
         const arr = pages[currentPage];
-        // Swap with the previous item
-        [arr[selectedIndex], arr[selectedIndex - 1]] = [arr[selectedIndex - 1], arr[selectedIndex]];
-        selectedIndex--;
+        if (selectedIndex > 0) {
+            [arr[selectedIndex], arr[selectedIndex - 1]] = [arr[selectedIndex - 1], arr[selectedIndex]];
+            selectedIndex--;
+        }
+    }
+};
+
+const bindLayerBtn = (id, actionKey) => {
+    const btn = get(id);
+    if (!btn) return;
+
+    // Use pointerup for immediate response on touch without "ghost clicks"
+    btn.addEventListener("pointerup", (e) => {
+        if (selectedIndex === null) return;
+        e.preventDefault();
+        
+        layerActions[actionKey]();
+        
         renderPage();
         saveData();
-    }
-});
+    });
+};
+
+bindLayerBtn("frontBtn", "front");
+bindLayerBtn("backBtnLayer", "back");
+bindLayerBtn("forwardBtn", "forward");
+bindLayerBtn("backwardBtn", "backward");
 
     renderPage();
 });
