@@ -47,6 +47,77 @@ html, body{
     color: white;
 }
 
+.menu-toggle {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 10px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+
+    background-color: white;
+    border-radius: 50%;
+    border: 6px solid #18aaff;
+    box-shadow: 0 0 8px #18aaff;
+
+    transition: all 0.3s ease;
+    z-index: 20;
+}
+
+.menu-toggle:hover {
+    box-shadow: 0 0 15px #18aaff, 0 0 25px #18aaff;
+}
+
+/* Bars */
+.bar {
+    width: 26px;
+    height: 4px;
+    background-color: #5b8bd5;
+    border-radius: 2px;
+    position: absolute;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Equal sign spacing */
+.bar1 { transform: translateY(-6px); }
+.bar2 { transform: translateY(6px); }
+
+/* ✨ Smooth morph into X */
+.menu-toggle.open .bar1 {
+    transform: translateY(0) rotate(45deg);
+}
+
+.menu-toggle.open .bar2 {
+    transform: translateY(0) rotate(-45deg);
+}
+
+#topBarContent {
+    margin-top: 70px;
+
+    max-height: 500px;
+    opacity: 1;
+    transform: translateY(0);
+
+    transition:
+        max-height 0.4s ease,
+        opacity 0.3s ease,
+        transform 0.3s ease;
+}
+
+.topBar.collapsed #topBarContent {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-20px);
+    overflow: hidden;
+    pointer-events: none;
+}
+
 #boardWrapper {
     position: absolute; width: 100%; height: 100%;
     display: flex; justify-content: center; align-items: center;
@@ -175,6 +246,17 @@ html, body{
         font-size: 8px;
         margin-top: 10px;
     }
+
+        .menu-toggle {
+    width: 45px;
+    height: 45px;
+}
+
+/* Bars */
+.bar {
+    width: 22px;
+    height: 4px;
+}
 
     .nav-arrow {
         font-size:20px;

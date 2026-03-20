@@ -15,6 +15,17 @@ let selectedIndex = null;
 
 const get = (id) => document.getElementById(id);
 
+const menuToggle = document.getElementById("menu-toggle");
+const topBar = document.querySelector(".topBar");
+
+// START CLOSED
+topBar.classList.add("collapsed");
+
+menuToggle.onclick = () => {
+    menuToggle.classList.toggle("open");
+    topBar.classList.toggle("collapsed");
+};
+
 // 2. CORE UTILITIES
 function saveData() {
     localStorage.setItem("stickyPages", JSON.stringify(pages));
