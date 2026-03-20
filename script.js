@@ -132,8 +132,19 @@ function setupDrag(div, idx) {
 
         const move = (me) => {
             const mp = getPos(me);
-            const nx = mp.px - ox;
-            const ny = mp.py - oy;
+            let nx = mp.px - ox;
+            let ny = mp.py - oy;
+
+            // --- BARRIER LOGIC ADDED HERE ---
+            // Set this to the height of your top bar in pixels. 
+            // 70 is a good starting guess, but change it if your bar is thicker/thinner.
+            const TOP_BAR_HEIGHT = 70; 
+            
+            if (ny < TOP_BAR_HEIGHT) {
+                ny = TOP_BAR_HEIGHT; // Forces the note to stay below the barrier
+            }
+            // --------------------------------
+
             div.style.left = nx + "px";
             div.style.top = ny + "px";
             pages[currentPage][idx].x = nx;
@@ -250,6 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     safeBind("addNoteBtn", clickEvent, () => {
+        // Notes spawn at y:100, which should be safely below a 70px top bar
         pages[currentPage].push({ text: "New Note", x: 100, y: 100, size: 150, color: "#fff740", rotation: 0 });
         renderPage();
         selectNote(pages[currentPage].length - 1);
