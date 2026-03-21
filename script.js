@@ -366,8 +366,20 @@ const layerActions = {
         const note = arr.splice(selectedIndex, 1)[0];
         arr.unshift(note);
         selectedIndex = 0;
-    }
-    
+    },
+    forward: () => {
+        const arr = pages[currentPage];
+        if (selectedIndex < arr.length - 1) {
+            [arr[selectedIndex], arr[selectedIndex + 1]] = [arr[selectedIndex + 1], arr[selectedIndex]];
+            selectedIndex++;
+        }
+    },
+    backward: () => {
+        const arr = pages[currentPage];
+        if (selectedIndex > 0) {
+            [arr[selectedIndex], arr[selectedIndex - 1]] = [arr[selectedIndex - 1], arr[selectedIndex]];
+            selectedIndex--;
+        }
     }
 };
 
@@ -389,7 +401,7 @@ const bindLayerBtn = (id, actionKey) => {
 
 bindLayerBtn("frontBtn", "front");
 bindLayerBtn("backBtnLayer", "back");
-
+bindLayerBtn("forwardBtn", "forward");
+bindLayerBtn("backwardBtn", "backward");
 
     renderPage();
-});
