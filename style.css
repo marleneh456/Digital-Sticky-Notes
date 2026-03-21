@@ -43,8 +43,11 @@ html, body{
 .topBar button {
     margin: 0 5px; padding: 8px 15px;
     background: #4b2c20;
-    border: none; cursor: pointer; border-radius: 5px;
+    border: none; 
+    cursor: pointer; 
     color: white;
+    font-weight: bold;
+    opacity: 80%;
 }
 
 .menu-toggle {
@@ -116,6 +119,42 @@ html, body{
     transform: translateY(-20px);
     overflow: hidden;
     pointer-events: none;
+}
+
+/* Box style for the Page Number */
+#pageNumber {
+    display: block; /* Forces it onto its own line */
+    background: #4b2c20;
+    color:white;
+    width: 150px;
+    margin: 15px auto; /* Centers the box and adds vertical spacing */
+    padding: 8px 0;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    opacity: 80%;
+}
+
+/* Box style for the Zoom Label */
+#zoomLabel {
+    display: inline-block;
+    background: #4b2c20;
+    color:white;
+    width: 80px;
+    height: 30px;
+    line-height: 30px; /* Matches height to perfectly center the text vertically */
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    margin: 0 5px;
+    vertical-align: middle;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    opacity: 80%;
+}
+
+#zoomOutBtn, #zoomInBtn{
+    font-size: 18px;
+    vertical-align: middle;
 }
 
 #boardWrapper {
@@ -242,11 +281,6 @@ html, body{
         font-size: 8px;
     }
 
-    #zoomOutBtn, #zoomInBtn{
-        font-size: 8px;
-        margin-top: 10px;
-    }
-
         .menu-toggle {
     width: 45px;
     height: 45px;
@@ -261,6 +295,26 @@ html, body{
     .nav-arrow {
         font-size:20px;
         padding:8px;
+    }
+
+       #zoomOutBtn, #zoomInBtn{
+        font-size: 8px;
+        margin-top: 10px;
+    }
+
+    #pageNumber {
+        width: 100px;
+        margin: 10px auto;
+        padding: 5px 0;
+        font-size: 8px;
+    }
+
+    #zoomLabel {
+        width: 50px;
+        height: 20px;
+        line-height: 20px; /* Keep this the same as height to center text */
+        font-size: 8px;
+        margin: 0 4px
     }
 
     .rotateLabel{
