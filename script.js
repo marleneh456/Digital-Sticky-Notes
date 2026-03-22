@@ -366,11 +366,7 @@ const layerActions = {
         const note = arr.splice(selectedIndex, 1)[0];
         arr.unshift(note);
         selectedIndex = 0;
-<<<<<<< HEAD
-    },
-=======
-    }
->>>>>>> e7050d71197ccd37f5089315264f7361ec79fab6
+    }   
 };
 
 const bindLayerBtn = (id, actionKey) => {
@@ -391,10 +387,6 @@ const bindLayerBtn = (id, actionKey) => {
 
 bindLayerBtn("frontBtn", "front");
 bindLayerBtn("backBtnLayer", "back");
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> e7050d71197ccd37f5089315264f7361ec79fab6
     renderPage();
 });
