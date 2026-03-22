@@ -404,4 +404,4 @@ bindLayerBtn("backBtnLayer", "back");
 bindLayerBtn("forwardBtn", "forward");
 bindLayerBtn("backwardBtn", "backward");
 
-    renderPage();
+    renderPage()
